@@ -80,4 +80,13 @@ for address in args.list:
                         do_print = True
             if do_print:
                 print("%s: %.2f PHA" % (desc or pool_cid[0], balance))
+    addr_info_string = substrate.query(
+        module='System',
+        storage_function='Account',
+        params=[address]
+    )
+    addr_info = json.loads(str(addr_info_string).replace("'","\""))
+    balance = int(addr_info["data"]["free"]) / 10**chain_decimals
+    total += balance
+    print("Free Balance: %.2f PHA" % (balance))
 print("Total: %.2f PHA" % (total))
