@@ -37,20 +37,30 @@ for address in args.list:
         params=[address]
     )
     invest_pools = ast.literal_eval(str(addr_info))
-    print(invest_pools)
+    share_price = {}
+    for pool_id, _ in invest_pools["invest_pools"]:
+        pool_info_string = substrate.query(
+            module='PhalaBasePool',
+            storage_function='Pools',
+            params=[int(pool_id)]
+        )
+        pool_info = json.loads(str(pool_info_string).replace("'","\""))
+        if "StakePool" in pool_info:
+            continue
+        share_price[int(pool_id)] = int(pool_info["Vault"]["last_share_price_checkpoint"]) / 10**chain_decimals
     for pool_cid in invest_pools["invest_pools"]:
         nft_info = substrate.query_map(
             module='Uniques',
             storage_function='Account',
             params=[address,pool_cid[1]],
-            max_results=5
+            max_results=10
         )
         for nft_account, info in nft_info:
             nft_details = substrate.query_map(
                 module='RmrkCore',
                 storage_function='Properties',
                 params=[pool_cid[1],nft_account],
-                max_results=5
+                max_results=10
             )
             desc = ""
             balance = 0
@@ -65,8 +75,9 @@ for address in args.list:
                         balance = 0
                     else:
                         balance = substrate.decode_scale('u128', value) / 10**chain_decimals
+                        balance = balance * share_price.get(pool_cid[0], 1)
                         total += balance
                         do_print = True
             if do_print:
-                print("%s: %.2f PHA" % (desc, balance))
+                print("%s: %.2f PHA" % (desc or pool_cid[0], balance))
 print("Total: %.2f PHA" % (total))
